@@ -272,7 +272,7 @@ def _max(self, dim=None, keepdim=False):
 
 
 @core
-def max_pool2d(input, kernel_size, stride, padding, dilation, ceil_mode=False,
+def max_pool2d(input, kernel_size, stride=(), padding=0, dilation=1, ceil_mode=False,
                return_indices=False):
     r"""Applies a max_pool2d."""
     kernel_size = _pair(kernel_size)
@@ -317,8 +317,11 @@ def relu(x):
 
 
 @core
-def reshape(x, shp):
+def reshape(x, *shp):
     """Reshape that allow unknown dim (-1)."""
+    if len(shp) == 1:
+        if isinstance(shp[0], tuple):
+            shp = shp[0]
     return P.reshape(x, _shp_explicit(x.shape, shp))
 
 

@@ -101,7 +101,7 @@ standard_method_map[PyTorchTensor].update({
     't': operations.t,
     'transpose': transpose,
     'tanh': operations.array_tanh,
-    'view': P.reshape,  # contiguousness is ignored by us for now?
+    'view': reshape,  # contiguousness is ignored by us for now?
     'zeros_like': operations.zeros_like,  # hidden method used by bwd (I think)
 })
 
@@ -174,6 +174,9 @@ def _to_abstract(self, v: torch.nn.Module, **kwargs):
                 setattr(v, k, a)
         return v
 
+    cls = v.__class__
+    cls.__myia_named_parameters = tuple(tuple(_p[0].split('.'))
+                                              for _p in v.named_parameters())
     return AbstractModule(v.__class__, fields, constructor=new_module)
 
 
