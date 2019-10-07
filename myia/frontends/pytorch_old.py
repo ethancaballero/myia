@@ -1,3 +1,5 @@
+#delete this file; it's just a reference
+
 """PyTorch Frontend."""
 
 import copy
@@ -143,21 +145,18 @@ def _to_abstract(self, v: torch.nn.Module, **kwargs):
                 # TODO: Remove "(isinstance(v, torch.nn.Sequential) and"
                 #       once Alias PR ready
                 # TODO: Remove rest of if statement once Dict support empty Dic
-                """
                 if var_k not in ('_parameters', '_modules') or \
                         (isinstance(v, torch.nn.Sequential) and
                          var_v != OrderedDict()):
-                """
 
-                #print("k", var_k, "v", var_v)
-                fields[var_k] = self(var_v, **kwargs)
+                    fields[var_k] = self(var_v, **kwargs)
         else:
             pass
             # TODO: maybe make a warning for if user happened
             #       to name attribute something in blacklist
 
     # TODO: Remove "if not isinstance(v, Sequential)" once Alias PR is ready
-    """TODO: Remove these 2 loops (mod and par) once Dict support empty Dict
+    # """TODO: Remove these 2 loops (mod and par) once Dict support empty Dict
     if not isinstance(v, torch.nn.Sequential):
         for mod_k, mod_v in v._modules.items():
             fields[mod_k] = self(mod_v, **kwargs)
@@ -179,19 +178,12 @@ def _to_abstract(self, v: torch.nn.Module, **kwargs):
         # TODO: Figure out something more memory efficient than deepcopy.
         #       P.S. We tried copy.copy(v) and it is not sufficiently deep.
         v = copy.deepcopy(v)
-        #breakpoint()
         for k, a in zip(names, args):
-            #print("v", v, "k", k, "a", a)
-            if k not in ('_parameters', '_modules'):
-                print("v", v, "k", k, "a", a)
-                #print("The third printed bias and weight has the gradient, not sure how to access those afterwards though.")
-                if isinstance(getattr(v, k), torch.nn.Parameter):
-                    setattr(v, k, torch.nn.Parameter(a))
-                else:
-                    setattr(v, k, a)
+            if isinstance(getattr(v, k), torch.nn.Parameter):
+                setattr(v, k, torch.nn.Parameter(a))
+            else:
+                setattr(v, k, a)
         return v
-
-    #print(1234, v)
 
     return AbstractModule(v.__class__, fields, constructor=new_module)
 
@@ -227,7 +219,7 @@ __all__ = [
     'pytorch_dtype_to_type',
 ]
 
-
+#breakpoint()
 @get_fields.register
 def _get_fields(instance: torch.nn.Module):
     blacklist = OrderedSet(dir(torch.nn.Module()))
@@ -239,10 +231,34 @@ def _get_fields(instance: torch.nn.Module):
 
     keys = OrderedSet(dir(instance)) - blacklist
     d = {}
-
+    print("keys", keys)
     for k in keys:
         d[k] = getattr(instance, k)
     return d
+
+'''
+@get_fields.register
+def _get_fields(instance: torch.nn.modules.container.Sequential):
+    blacklist = OrderedSet(dir(torch.nn.modules.container.Sequential()))
+    blacklist.add('__constants__')
+    blacklist.add('reset_parameters')
+
+    blacklist.remove('_parameters')
+    blacklist.remove('_modules')
+
+    keys = OrderedSet(dir(instance)) - blacklist
+    d = {}
+    #print("keys", keys)
+    #breakpoint()
+    for k in keys:
+        d[k] = getattr(instance, k)
+    """
+    for k, v in instance._modules.items():
+        d[k] = v
+    #"""
+    #breakpoint()
+    return d
+    #'''
 
 
 def tensor_pytorch_aliasable(v, vseq, path):
@@ -250,7 +266,8 @@ def tensor_pytorch_aliasable(v, vseq, path):
 
     Tensors inside a list or ADT are not aliasable.
     """
-    if isinstance(v, torch.Tensor):
+    #if isinstance(v, torch.Tensor):
+    if isinstance(v, (torch.Tensor, torch.nn.Parameter, torch.nn.parameter.Parameter)):
         if any(isinstance(x, (list, ADT)) for x in vseq):
             return 'X'
         else:

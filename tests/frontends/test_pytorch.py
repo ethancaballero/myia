@@ -455,6 +455,88 @@ def test_module_2_layer_mlp_seq_fwd():
     assert torch.allclose(output, output_expected)
 
 
+def test_module_linear_seq_bwd():
+    from myia.frontends.pytorch import tensor_pytorch_aliasable
+
+    backend = 'pytorch'
+    backend_options = get_backend_options(args, backend)
+
+    torch.manual_seed(123)
+
+    inp = torch.Tensor(MA(2, 4, dtype=args.dtype))
+    model = Linear_Seq(4, 2, 3)
+    #model = MLP_2_Layers_Seq(4, 2, 3)
+    target = torch.Tensor([2.5])
+
+    """
+    from myia.abstract.aliasing import find_aliases
+    #breakpoint()
+    al = find_aliases(model, aliasable=tensor_pytorch_aliasable)
+    print("alias", al)
+    #assert False
+    #"""
+
+    def mse(value, target):
+        diff = value - target
+        return (diff * diff).sum()
+
+    def cost(model, inp, target):
+        value = model(inp)
+        loss = mse(value, target)
+        return loss
+
+    pt_cost = cost(model, inp, target)
+
+    """
+    print("pt_cost", pt_cost)
+    pt_cost.backward()
+    print()
+    for n, g in model.named_parameters():
+        print("g pt", n, g.grad.data)
+    asdf
+    #"""
+
+    #"""
+    @myia(backend=backend, backend_options=backend_options, alias_tracker=tensor_pytorch_aliasable)
+    def step(model, inp, target):
+        _cost, dmodel = value_and_grad(cost, 'model')(model, inp, target)
+        return _cost, dmodel
+    loss, grad = step(model, inp, target)
+    #"""
+
+    """
+    @myia(backend=backend, backend_options=backend_options, alias_tracker=tensor_pytorch_aliasable)
+    def step(model, inp, target):
+        _cost = cost(model, inp, target)
+        return _cost
+    loss = step(model, inp, target)
+    #"""
+
+    #assert loss == 42.759910583496094
+
+    expected_grads = [
+        torch.Tensor([[-1.51596880, -7.51286650,  3.24008656,  2.31766868],
+                      [-5.04396868,  6.33524609, -3.62623000, 16.01710510]]),
+        torch.Tensor([1.85057139, 1.95227396]),
+        torch.Tensor([[-0.65377355,  4.39202595],
+                      [-4.45504284,  1.24591899],
+                      [-1.77709150,  4.90630770]]),
+        torch.Tensor([-7.69495678, -6.02438641, -9.53780556])
+    ]
+
+    print()
+    for n, g in model.named_parameters():
+        print("g pt", n, g)
+
+    print()
+    for n, g in grad.named_parameters():
+        print("g my", n, g)
+
+    for g, eg in zip(grad.parameters(), expected_grads):
+        assert torch.allclose(g, eg)
+
+
+
 def test_conv2d_fwd():
     backend = 'pytorch'
     backend_options = get_backend_options(args, backend)
@@ -961,7 +1043,7 @@ def test_switch_input_types():
 
 
 # This is mostly here to cover inst_tuple_setitem method in myia.compile.vm
-def test_optim_getitem():
+def test_optim_tuple_setitem():
     from myia.abstract import macro
     from myia.operations import primitives as P
     from myia.ir import sexp_to_node
